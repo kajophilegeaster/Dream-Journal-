@@ -1,1 +1,943 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carnet de Rêves</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EDEAF6;
+    --bg-elevated: #FFFFFF;
+    --bg-sunk: #E2DEF0;
+    --ink: #1C1B2E;
+    --ink-muted: #6E6A85;
+    --accent: #C6892A;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #F4E3BE;
+    --rose: #D14E75;
+    --rose-soft: #F8D9E3;
+    --line: rgba(28,27,46,0.12);
+    --shadow: 0 10px 30px rgba(28,27,46,0.08);
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 9px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Manrope', sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131226;
+      --bg-elevated: #1E1D3A;
+      --bg-sunk: #191831;
+      --ink: #F1EFFB;
+      --ink-muted: #A6A2C4;
+      --accent: #E8B84B;
+      --accent-ink: #1C1B2E;
+      --accent-soft: #3B3560;
+      --rose: #F2789F;
+      --rose-soft: #3E2333;
+      --line: rgba(241,239,251,0.12);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131226;
+    --bg-elevated: #1E1D3A;
+    --bg-sunk: #191831;
+    --ink: #F1EFFB;
+    --ink-muted: #A6A2C4;
+    --accent: #E8B84B;
+    --accent-ink: #1C1B2E;
+    --accent-soft: #3B3560;
+    --rose: #F2789F;
+    --rose-soft: #3E2333;
+    --line: rgba(241,239,251,0.12);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+  a { color: inherit; }
+  button { font-family: inherit; cursor: pointer; }
+  input, textarea, select { font-family: inherit; }
+
+  /* ---------- background: quiet starfield on the app shell ---------- */
+  #stars {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+  }
+
+  .app {
+    position: relative; z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ---------- header ---------- */
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: max(18px, env(safe-area-inset-top, 0px)) 20px 10px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; letter-spacing: -.01em; }
+  .brand .tagline { font-size: .78rem; color: var(--ink-muted); display: none; }
+  @media (min-width: 640px) { .brand .tagline { display: inline; } }
+  .top-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--bg-elevated);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink); font-size: 1.05rem;
+  }
+  .icon-btn:active { transform: scale(.94); }
+
+  main { flex: 1; padding: 6px 20px 30px; }
+
+  /* ---------- desktop side nav ---------- */
+  .layout { display: flex; gap: 28px; align-items: flex-start; }
+  nav.side {
+    display: none;
+    flex-direction: column; gap: 4px;
+    position: sticky; top: 18px;
+    width: 190px; flex-shrink: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 10px;
+  }
+  @media (min-width: 860px) {
+    nav.side { display: flex; }
+    nav.bottom { display: none !important; }
+    main { padding-left: 0; }
+  }
+  nav.side button, .navlink {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 12px; border-radius: var(--radius-sm);
+    border: none; background: transparent; color: var(--ink-muted);
+    font-size: .92rem; font-weight: 600; text-align: left; width: 100%;
+  }
+  nav.side button.active { background: var(--accent-soft); color: var(--ink); }
+  .content { flex: 1; min-width: 0; }
+
+  /* ---------- bottom nav (mobile) ---------- */
+  nav.bottom {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-around;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--line);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  nav.bottom button {
+    background: none; border: none; color: var(--ink-muted);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: .64rem; font-weight: 700; width: 62px; padding: 4px 0;
+  }
+  nav.bottom button .ic { font-size: 1.25rem; }
+  nav.bottom button.active { color: var(--accent); }
+  nav.bottom button.add .ic {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    margin-top: -22px; box-shadow: var(--shadow); font-size: 1.5rem;
+  }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .section-title { font-size: 1.25rem; margin: 26px 0 14px; }
+  .section-title:first-child { margin-top: 4px; }
+  .muted { color: var(--ink-muted); }
+
+  /* ---------- dashboard hero ---------- */
+  .hero {
+    background: linear-gradient(155deg, var(--bg-elevated), var(--bg-sunk));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 26px 22px;
+    display: flex; align-items: center; gap: 22px;
+    box-shadow: var(--shadow);
+  }
+  .ring-wrap { position: relative; width: 108px; height: 108px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--line); stroke-width: 10; }
+  .ring-fg { fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset .7s ease; }
+  .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-label b { font-family: var(--font-display); font-size: 1.4rem; }
+  .ring-label span { font-size: .62rem; color: var(--ink-muted); }
+  .hero-text h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .hero-text p { margin: 0; color: var(--ink-muted); font-size: .9rem; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 16px; }
+  .stat-card {
+    background: var(--bg-elevated); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 14px; text-align: center;
+  }
+  .stat-card b { display: block; font-family: var(--font-display); font-size: 1.4rem; }
+  .stat-card span { font-size: .7rem; color: var(--ink-muted); }
+
+  .rail { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail-card {
+    flex: 0 0 220px; background: var(--bg-elevated); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 14px; cursor: pointer;
+  }
+  .rail-card .cat { font-size: 1.3rem; }
+  .rail-card h4 { font-family: var(--font-body); font-weight: 700; font-size: .92rem; margin: 8px 0 4px; }
+  .rail-card p { margin: 0; font-size: .76rem; color: var(--ink-muted); }
+  .empty-inline { padding: 22px; text-align: center; color: var(--ink-muted); font-size: .85rem;
+    border: 1px dashed var(--line); border-radius: var(--radius-md); width: 100%; }
+
+  /* ---------- toolbar / filters ---------- */
+  .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-elevated); border: 1px solid var(--line);
+    border-radius: 999px; padding: 10px 16px;
+  }
+  .search-box input { border: none; background: transparent; outline: none; width: 100%; color: var(--ink); font-size: .92rem; }
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg-elevated);
+    font-size: .78rem; font-weight: 600; color: var(--ink-muted); white-space: nowrap;
+  }
+  .chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  :root[data-theme="dark"] .chip.active, @media (prefers-color-scheme: dark) { }
+  .filter-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  select.pill {
+    border: 1px solid var(--line); background: var(--bg-elevated); color: var(--ink);
+    border-radius: 999px; padding: 8px 12px; font-size: .78rem; font-weight: 600;
+  }
+
+  /* ---------- dream list ---------- */
+  .dream-list { display: flex; flex-direction: column; gap: 10px; }
+  .dream-card {
+    background: var(--bg-elevated); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 14px 14px 14px 12px;
+    display: flex; gap: 12px; align-items: flex-start;
+    animation: rise .3s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .check {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
+    border: 2px solid var(--line); background: var(--bg-sunk);
+    display: flex; align-items: center; justify-content: center; font-size: .8rem;
+    color: transparent; transition: all .2s ease;
+  }
+  .check.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .dream-body { flex: 1; min-width: 0; }
+  .dream-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dream-title { font-weight: 700; font-size: .96rem; }
+  .dream-title.done { text-decoration: line-through; color: var(--ink-muted); }
+  .badge { font-size: .68rem; padding: 2px 8px; border-radius: 999px; background: var(--bg-sunk); color: var(--ink-muted); font-weight: 700; }
+  .badge.pr-haute { background: var(--rose-soft); color: var(--rose); }
+  .dream-desc { font-size: .8rem; color: var(--ink-muted); margin: 4px 0 6px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .dream-meta { display: flex; gap: 10px; font-size: .72rem; color: var(--ink-muted); flex-wrap: wrap; }
+  .dream-actions { display: flex; flex-direction: column; gap: 6px; }
+  .mini-btn { border: none; background: none; color: var(--ink-muted); font-size: 1rem; padding: 2px; }
+
+  /* ---------- form ---------- */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: .78rem; font-weight: 700; margin-bottom: 6px; color: var(--ink-muted); }
+  .field input[type=text], .field input[type=date], .field textarea, .field select {
+    width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--line); background: var(--bg-elevated); color: var(--ink);
+    font-size: .92rem; outline: none;
+  }
+  .field textarea { resize: vertical; min-height: 90px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 8px; }
+  .cat-opt {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px; border-radius: var(--radius-sm); border: 1px solid var(--line);
+    background: var(--bg-elevated); font-size: .68rem; color: var(--ink-muted); font-weight: 600;
+  }
+  .cat-opt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+  .cat-opt .em { font-size: 1.2rem; }
+  .priority-row { display: flex; gap: 8px; }
+  .priority-row button {
+    flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--line);
+    background: var(--bg-elevated); color: var(--ink-muted); font-weight: 700; font-size: .8rem;
+  }
+  .priority-row button.active { border-color: var(--ink); color: var(--ink); background: var(--bg-sunk); }
+  .primary-btn {
+    width: 100%; padding: 14px; border-radius: 999px; border: none;
+    background: var(--ink); color: var(--bg); font-weight: 700; font-size: .94rem;
+  }
+  .primary-btn:active { transform: scale(.98); }
+  .secondary-btn {
+    width: 100%; padding: 13px; border-radius: 999px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink-muted); font-weight: 700; font-size: .9rem; margin-top: 8px;
+  }
+
+  /* ---------- modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,9,20,.5); z-index: 20;
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  @media (min-width: 640px) { .overlay { align-items: center; } }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    background: var(--bg); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto;
+    border-radius: 22px 22px 0 0; padding: 20px 20px calc(24px + env(safe-area-inset-bottom,0px));
+    transform: translateY(16px); transition: transform .25s ease;
+  }
+  @media (min-width: 640px) { .sheet { border-radius: 22px; transform: translateY(8px); } }
+  .overlay.show .sheet { transform: none; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sheet-head h3 { font-size: 1.15rem; }
+
+  /* ---------- empty state ---------- */
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--ink-muted); }
+  .empty-state .em { font-size: 2.2rem; display: block; margin-bottom: 10px; }
+
+  /* ---------- confetti ---------- */
+  #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+
+  /* toast */
+  #toast {
+    position: fixed; bottom: calc(96px + env(safe-area-inset-bottom,0px)); left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: .82rem;
+    opacity: 0; transition: all .25s ease; z-index: 40; pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  ::selection { background: var(--accent-soft); }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<canvas id="confetti-canvas"></canvas>
+<div id="toast"></div>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="mark">☾ Carnet de Rêves</span>
+      <span class="tagline">— ce que je veux vivre un jour</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="themeBtn" title="Mode sombre">🌙</button>
+      <button class="icon-btn" id="settingsBtn" title="Réglages">⚙️</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <nav class="side" id="sideNav"></nav>
+      <div class="content" id="view"></div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom" id="bottomNav"></nav>
+
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ constants ============ */
+  var DEFAULT_CATEGORIES = [
+    {id:"voyages", name:"Voyages", em:"✈️"},
+    {id:"defis", name:"Défis", em:"🎯"},
+    {id:"carriere", name:"Carrière", em:"💼"},
+    {id:"finances", name:"Finances", em:"💰"},
+    {id:"creativite", name:"Créativité", em:"🎨"},
+    {id:"accomplissements", name:"Accomplissements", em:"🏆"},
+    {id:"relations", name:"Relations", em:"❤️"},
+    {id:"apprentissage", name:"Apprentissage", em:"📚"},
+    {id:"experiences", name:"Expériences", em:"🏋️"},
+    {id:"decouvertes", name:"Découvertes", em:"🌎"},
+    {id:"autres", name:"Autres", em:"⭐"}
+  ];
+  var PRIORITIES = [{id:"basse",label:"Basse"},{id:"moyenne",label:"Moyenne"},{id:"haute",label:"Haute"}];
+  var LS_DREAMS = "dj_dreams_v1", LS_CATS = "dj_cats_v1", LS_THEME = "dj_theme_v1";
+
+  /* ============ storage helpers (guarded) ============ */
+  function safeGet(key, fallback){
+    try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function safeSet(key, val){
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch(e){ return false; }
+  }
+
+  /* ============ state ============ */
+  var state = {
+    dreams: safeGet(LS_DREAMS, []),
+    categories: safeGet(LS_CATS, DEFAULT_CATEGORIES),
+    view: "dashboard",
+    search: "",
+    filterCat: "all",
+    filterStatus: "all",
+    sort: "recent",
+    editingId: null,
+    formDraft: null
+  };
+
+  function saveDreams(){ safeSet(LS_DREAMS, state.dreams); }
+  function saveCats(){ safeSet(LS_CATS, state.categories); }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayISO(){ return new Date().toISOString(); }
+  function fmtDate(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    if(isNaN(d)) return iso;
+    return d.toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'});
+  }
+  function catById(id){ return state.categories.find(function(c){return c.id===id;}) || {id:"autres", name:"Autres", em:"⭐"}; }
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ============ theme ============ */
+  function applyTheme(){
+    var t = safeGet(LS_THEME, "auto");
+    if(t === "auto") document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    var isDark = t === "dark" || (t === "auto" && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.getElementById('themeBtn').textContent = isDark ? "☀️" : "🌙";
+  }
+  document.getElementById('themeBtn').addEventListener('click', function(){
+    var t = safeGet(LS_THEME, "auto");
+    var isDark = t === "dark" || (t === "auto" && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    safeSet(LS_THEME, isDark ? "light" : "dark");
+    applyTheme();
+  });
+  applyTheme();
+
+  /* ============ starfield background (subtle, non-distracting) ============ */
+  (function stars(){
+    var c = document.getElementById('stars'), ctx = c.getContext('2d');
+    var pts = [];
+    function resize(){
+      c.width = window.innerWidth; c.height = window.innerHeight;
+      pts = [];
+      var n = Math.min(60, Math.floor((c.width*c.height)/22000));
+      for(var i=0;i<n;i++){
+        pts.push({x:Math.random()*c.width, y:Math.random()*c.height, r:Math.random()*1.3+.3, a:Math.random()*Math.PI*2, s:Math.random()*.015+.005});
+      }
+    }
+    function draw(){
+      ctx.clearRect(0,0,c.width,c.height);
+      var dark = document.documentElement.getAttribute('data-theme')==='dark' ||
+        (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      ctx.fillStyle = dark ? '#F1EFFB' : '#1C1B2E';
+      pts.forEach(function(p){
+        p.a += p.s;
+        var op = (Math.sin(p.a)+1)/2 * (dark?0.5:0.12) + (dark?0.08:0.02);
+        ctx.globalAlpha = op;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize);
+    resize(); draw();
+  })();
+
+  /* ============ confetti ============ */
+  function burstConfetti(){
+    var c = document.getElementById('confetti-canvas'), ctx = c.getContext('2d');
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    var colors = ['#E8B84B','#D14E75','#8C7BE8','#5AC8A8'];
+    var parts = [];
+    for(var i=0;i<70;i++){
+      parts.push({
+        x: c.width/2 + (Math.random()-0.5)*80,
+        y: c.height*0.35,
+        vx: (Math.random()-0.5)*9,
+        vy: Math.random()*-9 - 3,
+        g: 0.28,
+        size: Math.random()*6+4,
+        color: colors[Math.floor(Math.random()*colors.length)],
+        rot: Math.random()*360,
+        vr: (Math.random()-0.5)*14,
+        life: 0
+      });
+    }
+    var maxLife = 80;
+    function frame(){
+      ctx.clearRect(0,0,c.width,c.height);
+      var alive = false;
+      parts.forEach(function(p){
+        p.life++;
+        if(p.life > maxLife) return;
+        alive = true;
+        p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        ctx.save();
+        ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+        ctx.globalAlpha = 1 - p.life/maxLife;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+        ctx.restore();
+      });
+      if(alive) requestAnimationFrame(frame);
+      else ctx.clearRect(0,0,c.width,c.height);
+    }
+    frame();
+  }
+
+  /* ============ toast ============ */
+  var toastTimer;
+  function toast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2200);
+  }
+
+  /* ============ nav ============ */
+  var NAV_ITEMS = [
+    {id:"dashboard", label:"Tableau", ic:"🌌"},
+    {id:"list", label:"Mes rêves", ic:"📖"},
+    {id:"add", label:"Ajouter", ic:"+", add:true},
+    {id:"done", label:"Réalisés", ic:"🏆"}
+  ];
+  function renderNav(){
+    var side = document.getElementById('sideNav');
+    var bottom = document.getElementById('bottomNav');
+    side.innerHTML = NAV_ITEMS.map(function(it){
+      return '<button data-view="'+it.id+'" class="'+(state.view===it.id?'active':'')+'">'+
+        '<span>'+it.ic+'</span><span>'+it.label+'</span></button>';
+    }).join('');
+    bottom.innerHTML = NAV_ITEMS.map(function(it){
+      return '<button data-view="'+it.id+'" class="'+(state.view===it.id?'active':'')+' '+(it.add?'add':'')+'">'+
+        '<span class="ic">'+it.ic+'</span>'+(it.add?'':'<span>'+it.label+'</span>')+'</button>';
+    }).join('');
+    [].slice.call(document.querySelectorAll('[data-view]')).forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(btn.dataset.view === 'add') state.editingId = null;
+        goTo(btn.dataset.view);
+      });
+    });
+  }
+  function goTo(view){ state.view = view; render(); window.scrollTo({top:0}); }
+
+  /* ============ overlay / sheet ============ */
+  var overlay = document.getElementById('overlay'), sheet = document.getElementById('sheet');
+  function openSheet(html){
+    sheet.innerHTML = html;
+    overlay.classList.add('show');
+  }
+  function closeSheet(){ overlay.classList.remove('show'); }
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) closeSheet(); });
+
+  /* ============ settings sheet ============ */
+  document.getElementById('settingsBtn').addEventListener('click', function(){
+    openSheet(
+      '<div class="sheet-head"><h3>Réglages</h3><button class="icon-btn" onclick="DJ.closeSheet()">✕</button></div>'+
+      '<div class="field"><label>Apparence</label>'+
+        '<select class="pill" id="themeSel" style="width:100%">'+
+          '<option value="auto">Automatique (système)</option>'+
+          '<option value="light">Clair</option>'+
+          '<option value="dark">Sombre</option>'+
+        '</select>'+
+      '</div>'+
+      '<div class="field"><label>Catégories personnalisées</label>'+
+        '<div style="display:flex;gap:8px;margin-bottom:10px">'+
+          '<input type="text" id="newCatName" placeholder="Nom (ex: Sport)" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg-elevated);color:var(--ink)">'+
+          '<input type="text" id="newCatEmoji" placeholder="🔥" maxlength="4" style="width:56px;text-align:center;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--bg-elevated);color:var(--ink)">'+
+          '<button class="icon-btn" onclick="DJ.addCategory()">＋</button>'+
+        '</div>'+
+        '<div id="catManageList" style="display:flex;flex-wrap:wrap;gap:6px"></div>'+
+      '</div>'+
+      '<div class="field"><label>Données</label>'+
+        '<button class="secondary-btn" onclick="DJ.exportData()">⬇️ Exporter mes rêves (JSON)</button>'+
+        '<button class="secondary-btn" onclick="document.getElementById(\'importFile\').click()">⬆️ Importer un fichier JSON</button>'+
+        '<input type="file" id="importFile" accept="application/json" style="display:none">'+
+      '</div>'
+    );
+    document.getElementById('themeSel').value = safeGet(LS_THEME, "auto");
+    document.getElementById('themeSel').addEventListener('change', function(e){
+      safeSet(LS_THEME, e.target.value); applyTheme();
+    });
+    document.getElementById('importFile').addEventListener('change', handleImport);
+    renderCatManageList();
+  });
+  function renderCatManageList(){
+    var el = document.getElementById('catManageList');
+    if(!el) return;
+    el.innerHTML = state.categories.map(function(c){
+      var custom = DEFAULT_CATEGORIES.every(function(d){return d.id!==c.id;});
+      return '<span class="chip">'+c.em+' '+escapeHtml(c.name)+
+        (custom ? ' <button style="border:none;background:none;color:var(--rose);cursor:pointer;font-weight:800" onclick="DJ.removeCategory(\''+c.id+'\')">✕</button>' : '')+
+        '</span>';
+    }).join('');
+  }
+  function addCategory(){
+    var name = document.getElementById('newCatName').value.trim();
+    var em = document.getElementById('newCatEmoji').value.trim() || "⭐";
+    if(!name){ toast("Donne un nom à ta catégorie"); return; }
+    state.categories.push({id: uid(), name: name, em: em});
+    saveCats();
+    document.getElementById('newCatName').value = "";
+    document.getElementById('newCatEmoji').value = "";
+    renderCatManageList();
+    toast("Catégorie ajoutée");
+  }
+  function removeCategory(id){
+    state.categories = state.categories.filter(function(c){return c.id!==id;});
+    saveCats(); renderCatManageList(); render();
+  }
+  function exportData(){
+    var payload = {dreams: state.dreams, categories: state.categories, exportedAt: todayISO()};
+    var blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "carnet-de-reves-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    toast("Export terminé");
+  }
+  function handleImport(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        if(Array.isArray(data.dreams)){
+          state.dreams = state.dreams.concat(data.dreams.map(function(d){ d.id = d.id || uid(); return d; }));
+          saveDreams();
+        }
+        if(Array.isArray(data.categories)){
+          data.categories.forEach(function(c){
+            if(!state.categories.some(function(x){return x.id===c.id;})) state.categories.push(c);
+          });
+          saveCats();
+        }
+        toast("Import réussi 🎉");
+        closeSheet(); render();
+      }catch(err){ toast("Fichier invalide"); }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ============ dream actions ============ */
+  function toggleDone(id){
+    var d = state.dreams.find(function(x){return x.id===id;});
+    if(!d) return;
+    if(d.status === 'done'){
+      d.status = 'todo'; d.completedDate = null;
+      saveDreams(); render();
+      return;
+    }
+    openSheet(
+      '<div class="sheet-head"><h3>Bravo, un rêve de plus 🌟</h3><button class="icon-btn" onclick="DJ.closeSheet()">✕</button></div>'+
+      '<p class="muted" style="margin-top:-6px">Tu peux garder un souvenir de ce moment (facultatif).</p>'+
+      '<div class="field"><label>Souvenir / note</label><textarea id="noteInput" placeholder="Comment c\'était ?"></textarea></div>'+
+      '<button class="primary-btn" onclick="DJ.confirmDone(\''+id+'\')">Marquer comme réalisé</button>'
+    );
+  }
+  function confirmDone(id){
+    var d = state.dreams.find(function(x){return x.id===id;});
+    if(!d) return;
+    d.status = 'done';
+    d.completedDate = todayISO();
+    d.note = document.getElementById('noteInput').value.trim();
+    saveDreams();
+    closeSheet();
+    render();
+    burstConfetti();
+    toast("Rêve réalisé — bravo ! 🎉");
+  }
+  function deleteDream(id){
+    openSheet(
+      '<div class="sheet-head"><h3>Supprimer ce rêve ?</h3><button class="icon-btn" onclick="DJ.closeSheet()">✕</button></div>'+
+      '<p class="muted">Cette action est définitive.</p>'+
+      '<button class="primary-btn" style="background:var(--rose)" onclick="DJ.reallyDelete(\''+id+'\')">Supprimer</button>'+
+      '<button class="secondary-btn" onclick="DJ.closeSheet()">Annuler</button>'
+    );
+  }
+  function reallyDelete(id){
+    state.dreams = state.dreams.filter(function(d){return d.id!==id;});
+    saveDreams(); closeSheet(); render(); toast("Rêve supprimé");
+  }
+  function editDream(id){
+    state.editingId = id;
+    goTo('add');
+  }
+  function viewDetails(id){
+    var d = state.dreams.find(function(x){return x.id===id;});
+    if(!d) return;
+    var c = catById(d.category);
+    openSheet(
+      '<div class="sheet-head"><h3>'+c.em+' '+escapeHtml(d.title)+'</h3><button class="icon-btn" onclick="DJ.closeSheet()">✕</button></div>'+
+      (d.description ? '<p style="font-size:.9rem;line-height:1.5">'+escapeHtml(d.description)+'</p>' : '')+
+      '<div class="dream-meta" style="margin:10px 0">'+
+        '<span>'+c.name+'</span><span>·</span><span>Priorité '+d.priority+'</span>'+
+      '</div>'+
+      (d.dueDate ? '<p class="muted" style="font-size:.8rem">Prévu pour le '+fmtDate(d.dueDate)+'</p>' : '')+
+      (d.status==='done' ? '<p class="muted" style="font-size:.8rem">Réalisé le '+fmtDate(d.completedDate)+'</p>' : '')+
+      (d.note ? '<div style="margin-top:10px;padding:12px;background:var(--bg-sunk);border-radius:12px;font-size:.85rem"><b>Souvenir :</b><br>'+escapeHtml(d.note)+'</div>' : '')+
+      '<div style="display:flex;gap:8px;margin-top:16px">'+
+        '<button class="secondary-btn" style="margin-top:0" onclick="DJ.closeSheet();DJ.editDream(\''+d.id+'\')">✏️ Modifier</button>'+
+        '<button class="secondary-btn" style="margin-top:0;color:var(--rose)" onclick="DJ.closeSheet();DJ.deleteDream(\''+d.id+'\')">🗑️ Supprimer</button>'+
+      '</div>'
+    );
+  }
+  window.DJ = {
+    closeSheet: closeSheet, addCategory: addCategory, removeCategory: removeCategory,
+    exportData: exportData, confirmDone: confirmDone, reallyDelete: reallyDelete,
+    editDream: editDream, deleteDream: deleteDream
+  };
+
+  /* ============ views ============ */
+  function render(){
+    renderNav();
+    var el = document.getElementById('view');
+    if(state.view === 'dashboard') el.innerHTML = viewDashboard();
+    else if(state.view === 'list') el.innerHTML = viewList();
+    else if(state.view === 'add') el.innerHTML = viewForm();
+    else if(state.view === 'done') el.innerHTML = viewDone();
+    wireView();
+  }
+
+  function progressPct(){
+    if(state.dreams.length===0) return 0;
+    var done = state.dreams.filter(function(d){return d.status==='done';}).length;
+    return Math.round(done/state.dreams.length*100);
+  }
+
+  function viewDashboard(){
+    var total = state.dreams.length;
+    var done = state.dreams.filter(function(d){return d.status==='done';}).length;
+    var todo = total - done;
+    var pct = progressPct();
+    var circ = 2*Math.PI*44;
+    var offset = circ - (pct/100)*circ;
+    var recent = state.dreams.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt);}).slice(0,5);
+    var recentDone = state.dreams.filter(function(d){return d.status==='done';})
+      .sort(function(a,b){return new Date(b.completedDate)-new Date(a.completedDate);}).slice(0,5);
+
+    return ''+
+    '<div class="hero">'+
+      '<div class="ring-wrap"><svg width="108" height="108" viewBox="0 0 108 108">'+
+        '<circle class="ring-bg" cx="54" cy="54" r="44"/>'+
+        '<circle class="ring-fg" cx="54" cy="54" r="44" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'"/>'+
+      '</svg><div class="ring-label"><b>'+pct+'%</b><span>accompli</span></div></div>'+
+      '<div class="hero-text"><h1>Ton ciel de rêves</h1><p>'+(total===0?'Commence ta première liste de rêves.':'Continue à écrire ton histoire, un rêve à la fois.')+'</p></div>'+
+    '</div>'+
+    '<div class="stat-row">'+
+      '<div class="stat-card"><b>'+total+'</b><span>Total</span></div>'+
+      '<div class="stat-card"><b>'+done+'</b><span>Réalisés</span></div>'+
+      '<div class="stat-card"><b>'+todo+'</b><span>À réaliser</span></div>'+
+    '</div>'+
+    '<h2 class="section-title">Récemment ajoutés</h2>'+
+    '<div class="rail">'+(recent.length? recent.map(dashCard).join('') : '<div class="empty-inline">Aucun rêve pour l\'instant — ajoutes-en un !</div>')+'</div>'+
+    '<h2 class="section-title">Récemment réalisés</h2>'+
+    '<div class="rail">'+(recentDone.length? recentDone.map(dashCard).join('') : '<div class="empty-inline">Pas encore de rêve réalisé — ça viendra ✨</div>')+'</div>';
+  }
+  function dashCard(d){
+    var c = catById(d.category);
+    return '<div class="rail-card" data-open="'+d.id+'"><span class="cat">'+c.em+'</span><h4>'+escapeHtml(d.title)+'</h4><p>'+c.name+'</p></div>';
+  }
+
+  function viewList(){
+    var cats = state.categories;
+    var filtered = state.dreams.filter(function(d){
+      var matchSearch = !state.search || (d.title+" "+(d.description||"")).toLowerCase().indexOf(state.search.toLowerCase())>-1;
+      var matchCat = state.filterCat==='all' || d.category===state.filterCat;
+      var matchStatus = state.filterStatus==='all' || d.status===state.filterStatus;
+      return matchSearch && matchCat && matchStatus;
+    });
+    filtered.sort(function(a,b){
+      if(state.sort==='recent') return new Date(b.createdAt)-new Date(a.createdAt);
+      if(state.sort==='oldest') return new Date(a.createdAt)-new Date(b.createdAt);
+      if(state.sort==='priority'){ var order={haute:0,moyenne:1,basse:2}; return order[a.priority]-order[b.priority]; }
+      if(state.sort==='title') return a.title.localeCompare(b.title);
+      if(state.sort==='due') return new Date(a.dueDate||'2999') - new Date(b.dueDate||'2999');
+      return 0;
+    });
+    return ''+
+    '<h2 class="section-title">Mes rêves</h2>'+
+    '<div class="toolbar">'+
+      '<div class="search-box">🔎<input id="searchInput" placeholder="Rechercher un rêve..." value="'+escapeHtml(state.search)+'"></div>'+
+      '<div class="chip-row" id="catChips">'+
+        '<span class="chip '+(state.filterCat==='all'?'active':'')+'" data-cat="all">Toutes</span>'+
+        cats.map(function(c){return '<span class="chip '+(state.filterCat===c.id?'active':'')+'" data-cat="'+c.id+'">'+c.em+' '+escapeHtml(c.name)+'</span>';}).join('')+
+      '</div>'+
+      '<div class="filter-line">'+
+        '<select class="pill" id="statusSel">'+
+          '<option value="all" '+(state.filterStatus==='all'?'selected':'')+'>Tous les statuts</option>'+
+          '<option value="todo" '+(state.filterStatus==='todo'?'selected':'')+'>À réaliser</option>'+
+          '<option value="done" '+(state.filterStatus==='done'?'selected':'')+'>Réalisés</option>'+
+        '</select>'+
+        '<select class="pill" id="sortSel">'+
+          '<option value="recent" '+(state.sort==='recent'?'selected':'')+'>Plus récents</option>'+
+          '<option value="oldest" '+(state.sort==='oldest'?'selected':'')+'>Plus anciens</option>'+
+          '<option value="priority" '+(state.sort==='priority'?'selected':'')+'>Priorité</option>'+
+          '<option value="due" '+(state.sort==='due'?'selected':'')+'>Date prévue</option>'+
+          '<option value="title" '+(state.sort==='title'?'selected':'')+'>Titre (A-Z)</option>'+
+        '</select>'+
+      '</div>'+
+    '</div>'+
+    (filtered.length ?
+      '<div class="dream-list">'+filtered.map(dreamCard).join('')+'</div>' :
+      '<div class="empty-state"><span class="em">🌙</span>Aucun rêve ne correspond.<br>Essaie un autre filtre, ou ajoutes-en un nouveau.</div>');
+  }
+
+  function dreamCard(d){
+    var c = catById(d.category);
+    var done = d.status === 'done';
+    return '<div class="dream-card">'+
+      '<button class="check '+(done?'done':'')+'" data-toggle="'+d.id+'">'+(done?'✓':'')+'</button>'+
+      '<div class="dream-body" data-open="'+d.id+'">'+
+        '<div class="dream-top"><span class="dream-title '+(done?'done':'')+'">'+escapeHtml(d.title)+'</span>'+
+          '<span class="badge">'+c.em+' '+c.name+'</span>'+
+          '<span class="badge '+(d.priority==='haute'?'pr-haute':'')+'">'+d.priority+'</span>'+
+        '</div>'+
+        (d.description ? '<p class="dream-desc">'+escapeHtml(d.description)+'</p>' : '')+
+        '<div class="dream-meta">'+
+          (d.dueDate ? '<span>🎯 '+fmtDate(d.dueDate)+'</span>' : '')+
+          (done ? '<span>✅ '+fmtDate(d.completedDate)+'</span>' : '')+
+        '</div>'+
+      '</div>'+
+      '<div class="dream-actions">'+
+        '<button class="mini-btn" data-edit="'+d.id+'">✏️</button>'+
+        '<button class="mini-btn" data-del="'+d.id+'">🗑️</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function viewDone(){
+    var doneList = state.dreams.filter(function(d){return d.status==='done';})
+      .sort(function(a,b){return new Date(b.completedDate)-new Date(a.completedDate);});
+    return '<h2 class="section-title">Rêves réalisés 🏆</h2>'+
+      (doneList.length ?
+        '<div class="dream-list">'+doneList.map(dreamCard).join('')+'</div>' :
+        '<div class="empty-state"><span class="em">🏆</span>Pas encore de rêve réalisé.<br>Chaque petit pas compte — continue !</div>');
+  }
+
+  function viewForm(){
+    var editing = state.editingId ? state.dreams.find(function(d){return d.id===state.editingId;}) : null;
+    var draft = editing || state.formDraft || {title:'',description:'',category:state.categories[0].id,priority:'moyenne',dueDate:''};
+    return '<h2 class="section-title">'+(editing?'Modifier le rêve':'Ajouter un rêve')+'</h2>'+
+    '<form id="dreamForm">'+
+      '<div class="field"><label>Titre</label><input required type="text" id="f_title" value="'+escapeHtml(draft.title)+'" placeholder="Ex : Visiter le Japon"></div>'+
+      '<div class="field"><label>Description</label><textarea id="f_desc" placeholder="Pourquoi ce rêve compte pour toi...">'+escapeHtml(draft.description||'')+'</textarea></div>'+
+      '<div class="field"><label>Catégorie</label><div class="cat-grid" id="catGrid">'+
+        state.categories.map(function(c){
+          return '<div class="cat-opt '+(draft.category===c.id?'active':'')+'" data-cat="'+c.id+'"><span class="em">'+c.em+'</span>'+escapeHtml(c.name)+'</div>';
+        }).join('')+
+      '</div></div>'+
+      '<div class="field"><label>Priorité</label><div class="priority-row" id="prioRow">'+
+        PRIORITIES.map(function(p){return '<button type="button" class="'+(draft.priority===p.id?'active':'')+'" data-prio="'+p.id+'">'+p.label+'</button>';}).join('')+
+      '</div></div>'+
+      '<div class="field"><label>Date prévue (facultatif)</label><input type="date" id="f_due" value="'+(draft.dueDate?draft.dueDate.slice(0,10):'')+'"></div>'+
+      '<button type="submit" class="primary-btn">'+(editing?'Enregistrer les modifications':'Ajouter ce rêve')+'</button>'+
+      (editing ? '<button type="button" class="secondary-btn" id="cancelEdit">Annuler</button>' : '')+
+    '</form>';
+  }
+
+  /* ============ wiring per view ============ */
+  function wireView(){
+    [].slice.call(document.querySelectorAll('[data-open]')).forEach(function(el){
+      el.addEventListener('click', function(){ viewDetails(el.dataset.open); });
+    });
+    [].slice.call(document.querySelectorAll('[data-toggle]')).forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); toggleDone(el.dataset.toggle); });
+    });
+    [].slice.call(document.querySelectorAll('[data-edit]')).forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); editDream(el.dataset.edit); });
+    });
+    [].slice.call(document.querySelectorAll('[data-del]')).forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); deleteDream(el.dataset.del); });
+    });
+
+    var searchInput = document.getElementById('searchInput');
+    if(searchInput){
+      searchInput.addEventListener('input', function(e){ state.search = e.target.value; render(); document.getElementById('searchInput').focus(); });
+    }
+    var catChips = document.getElementById('catChips');
+    if(catChips){
+      catChips.addEventListener('click', function(e){
+        var t = e.target.closest('[data-cat]');
+        if(!t) return;
+        state.filterCat = t.dataset.cat; render();
+      });
+    }
+    var statusSel = document.getElementById('statusSel');
+    if(statusSel) statusSel.addEventListener('change', function(e){ state.filterStatus = e.target.value; render(); });
+    var sortSel = document.getElementById('sortSel');
+    if(sortSel) sortSel.addEventListener('change', function(e){ state.sort = e.target.value; render(); });
+
+    var form = document.getElementById('dreamForm');
+    if(form){
+      var currentCat = (state.editingId ? state.dreams.find(function(d){return d.id===state.editingId;}).category : state.categories[0].id);
+      var currentPrio = (state.editingId ? state.dreams.find(function(d){return d.id===state.editingId;}).priority : 'moyenne');
+      document.getElementById('catGrid').addEventListener('click', function(e){
+        var t = e.target.closest('[data-cat]'); if(!t) return;
+        currentCat = t.dataset.cat;
+        [].slice.call(document.querySelectorAll('#catGrid .cat-opt')).forEach(function(o){o.classList.toggle('active', o===t);});
+      });
+      document.getElementById('prioRow').addEventListener('click', function(e){
+        var t = e.target.closest('[data-prio]'); if(!t) return;
+        currentPrio = t.dataset.prio;
+        [].slice.call(document.querySelectorAll('#prioRow button')).forEach(function(o){o.classList.toggle('active', o===t);});
+      });
+      var cancelBtn = document.getElementById('cancelEdit');
+      if(cancelBtn) cancelBtn.addEventListener('click', function(){ state.editingId = null; goTo('list'); });
+
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        var title = document.getElementById('f_title').value.trim();
+        if(!title){ toast('Donne un titre à ton rêve'); return; }
+        var payload = {
+          title: title,
+          description: document.getElementById('f_desc').value.trim(),
+          category: currentCat,
+          priority: currentPrio,
+          dueDate: document.getElementById('f_due').value || null
+        };
+        if(state.editingId){
+          var d = state.dreams.find(function(x){return x.id===state.editingId;});
+          Object.assign(d, payload);
+          toast('Rêve mis à jour ✏️');
+        } else {
+          state.dreams.push(Object.assign({
+            id: uid(), status: 'todo', createdAt: todayISO(), completedDate: null, note: ''
+          }, payload));
+          toast('Nouveau rêve ajouté ✨');
+        }
+        saveDreams();
+        state.editingId = null;
+        goTo('list');
+      });
+    }
+  }
+
+  /* ============ seed for first run ============ */
+  if(state.dreams.length === 0 && !safeGet('dj_seeded_v1', false)){
+    safeSet('dj_seeded_v1', true);
+    // no forced sample data — the empty state invites the user to add their own first dream
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
 
