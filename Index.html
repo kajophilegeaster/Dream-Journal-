@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #EDEAF6;
@@ -319,6 +320,27 @@
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   ::selection { background: var(--accent-soft); }
+
+  /* ---------- banners & cloud sync ---------- */
+  .banner {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--accent-soft); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px; font-size: .82rem;
+  }
+  .banner .txt { flex: 1; min-width: 160px; }
+  .banner button { border: none; border-radius: 999px; padding: 7px 12px; font-size: .76rem; font-weight: 700; }
+  .banner .go { background: var(--ink); color: var(--bg); }
+  .banner .later { background: transparent; color: var(--ink-muted); }
+  .sync-status { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--ink-muted); margin-bottom: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-muted); flex-shrink: 0; }
+  .dot.on { background: #4CAF7D; }
+  .dot.off { background: var(--rose); }
+  .helptext { font-size: .74rem; color: var(--ink-muted); line-height: 1.5; margin: 4px 0 10px; }
+  .helptext code { background: var(--bg-sunk); padding: 1px 5px; border-radius: 5px; }
+  details.howto { margin: 6px 0 14px; font-size: .8rem; }
+  details.howto summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+  details.howto ol { padding-left: 18px; margin: 8px 0; color: var(--ink-muted); line-height: 1.6; }
+  details.howto pre { background: var(--bg-sunk); padding: 10px; border-radius: 10px; overflow-x: auto; font-size: .68rem; }
 </style>
 </head>
 <body>
@@ -370,6 +392,44 @@
   ];
   var PRIORITIES = [{id:"basse",label:"Basse"},{id:"moyenne",label:"Moyenne"},{id:"haute",label:"Haute"}];
   var LS_DREAMS = "dj_dreams_v1", LS_CATS = "dj_cats_v1", LS_THEME = "dj_theme_v1";
+  var LS_SB_CONFIG = "dj_sb_config_v1", LS_LAST_EXPORT = "dj_last_export_v1", LS_LAST_PROMPT = "dj_last_prompt_v1";
+  var SQL_SETUP_SCRIPT = [
+    "create table dreams (",
+    "  id text primary key,",
+    "  user_id uuid references auth.users not null default auth.uid(),",
+    "  title text not null,",
+    "  description text,",
+    "  category text,",
+    "  priority text,",
+    "  status text default 'todo',",
+    "  created_at timestamptz default now(),",
+    "  due_date date,",
+    "  completed_date timestamptz,",
+    "  note text,",
+    "  updated_at timestamptz default now()",
+    ");",
+    "",
+    "alter table dreams enable row level security;",
+    "",
+    "create policy \"own rows\" on dreams",
+    "  for all",
+    "  using (auth.uid() = user_id)",
+    "  with check (auth.uid() = user_id);"
+  ].join("\n");
+  function copySqlScript(){
+    function done(){ toast("Script SQL copié ✅ — colle-le tel quel dans Supabase"); }
+    function fail(){
+      var ta = document.createElement('textarea');
+      ta.value = SQL_SETUP_SCRIPT; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try{ document.execCommand('copy'); done(); }catch(e){ toast("Copie impossible — sélectionne le texte manuellement"); }
+      document.body.removeChild(ta);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(SQL_SETUP_SCRIPT).then(done).catch(fail);
+    } else fail();
+  }
+  window.DJ_copySql = copySqlScript;
 
   /* ============ storage helpers (guarded) ============ */
   function safeGet(key, fallback){
@@ -509,6 +569,124 @@
     toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2200);
   }
 
+  /* ============ backup reminder ============ */
+  function maybeShowBackupBanner(){ render(); }
+  function daysSince(iso){ if(!iso) return Infinity; return (Date.now() - new Date(iso).getTime())/86400000; }
+  function shouldPromptBackup(){
+    if(state.dreams.length < 3) return false;
+    if(daysSince(safeGet(LS_LAST_EXPORT, null)) < 7) return false;
+    if(daysSince(safeGet(LS_LAST_PROMPT, null)) < 7) return false;
+    return true;
+  }
+  function dismissBackupPrompt(){ safeSet(LS_LAST_PROMPT, todayISO()); render(); }
+  function backupNow(){ exportData(); safeSet(LS_LAST_EXPORT, todayISO()); safeSet(LS_LAST_PROMPT, todayISO()); render(); }
+  window.DJ_backupNow = backupNow;
+  window.DJ_dismissBackup = dismissBackupPrompt;
+
+  /* ============ cloud sync (Supabase) — optional ============ */
+  var sbClient = null, sbSession = null, sbSyncing = false, sbLastSync = safeGet('dj_last_sync_v1', null);
+  function sbConfig(){ return safeGet(LS_SB_CONFIG, null); }
+  function initSupabase(){
+    var cfg = sbConfig();
+    if(!cfg || !cfg.url || !cfg.key) { sbClient = null; return; }
+    if(typeof window.supabase === 'undefined'){
+      sbClient = null;
+      // the library may still be loading over a slow connection — retry briefly
+      setTimeout(function(){ if(!sbClient) initSupabase(); }, 800);
+      return;
+    }
+    try{
+      sbClient = window.supabase.createClient(cfg.url, cfg.key);
+      sbClient.auth.getSession().then(function(res){
+        sbSession = res.data.session;
+        if(sbSession) pullAndMerge();
+        render();
+      });
+      sbClient.auth.onAuthStateChange(function(event, session){
+        sbSession = session;
+        if(session) pullAndMerge();
+        render();
+      });
+    }catch(e){ sbClient = null; }
+  }
+  function saveSbConfig(url, key){ safeSet(LS_SB_CONFIG, {url:url, key:key}); initSupabase(); }
+  function disconnectSb(){
+    if(sbClient) sbClient.auth.signOut();
+    safeSet(LS_SB_CONFIG, null); sbClient = null; sbSession = null; render();
+  }
+  function sendMagicLink(email){
+    if(!email){ toast("Saisis ton adresse email"); return; }
+    if(!sbClient) {
+      var cfg = sbConfig();
+      if(!cfg || !cfg.url || !cfg.key) toast("Enregistre d'abord l'URL et la clé du projet");
+      else toast("La librairie Supabase n'est pas encore chargée — vérifie ta connexion et réessaie dans quelques secondes");
+      return;
+    }
+    sbClient.auth.signInWithOtp({ email: email, options: { emailRedirectTo: window.location.href } })
+      .then(function(res){
+        if(res.error) toast("Erreur : " + res.error.message);
+        else toast("Lien de connexion envoyé à " + email + " ✉️");
+      });
+  }
+  function dreamToRow(d){
+    return {
+      id: d.id, title: d.title, description: d.description||'', category: d.category,
+      priority: d.priority, status: d.status, created_at: d.createdAt, due_date: d.dueDate,
+      completed_date: d.completedDate, note: d.note||'', updated_at: d.updatedAt || d.createdAt,
+      user_id: sbSession ? sbSession.user.id : undefined
+    };
+  }
+  function rowToDream(r){
+    return {
+      id: r.id, title: r.title, description: r.description||'', category: r.category,
+      priority: r.priority, status: r.status, createdAt: r.created_at, dueDate: r.due_date,
+      completedDate: r.completed_date, note: r.note||'', updatedAt: r.updated_at
+    };
+  }
+  function pushDream(d){
+    if(!sbClient || !sbSession || !d) return;
+    sbClient.from('dreams').upsert(dreamToRow(d)).then(function(res){
+      if(res.error) console.warn('sync push error', res.error.message);
+    });
+  }
+  function deleteRemoteDream(id){
+    if(!sbClient || !sbSession) return;
+    sbClient.from('dreams').delete().eq('id', id).then(function(){});
+  }
+  function pullAndMerge(){
+    if(!sbClient || !sbSession || sbSyncing) return;
+    sbSyncing = true;
+    sbClient.from('dreams').select('*').then(function(res){
+      sbSyncing = false;
+      if(res.error){ toast("Synchro impossible : " + res.error.message); return; }
+      var remote = (res.data||[]).map(rowToDream);
+      var byId = {};
+      state.dreams.forEach(function(d){ byId[d.id] = d; });
+      remote.forEach(function(r){
+        var local = byId[r.id];
+        if(!local || new Date(r.updatedAt||0) >= new Date(local.updatedAt||local.createdAt||0)){
+          byId[r.id] = r;
+        }
+      });
+      // push up any purely-local dreams the cloud doesn't know about yet
+      state.dreams.forEach(function(d){
+        if(!remote.some(function(r){return r.id===d.id;})) pushDream(d);
+      });
+      state.dreams = Object.keys(byId).map(function(k){return byId[k];});
+      saveDreams();
+      sbLastSync = todayISO(); safeSet('dj_last_sync_v1', sbLastSync);
+      render();
+      toast("Synchronisation à jour ☁️");
+    });
+  }
+  window.DJ_saveSbConfig = function(url,key){ saveSbConfig(url,key); toast('Configuration enregistrée'); setTimeout(openSettingsSheet, 50); };
+  window.DJ_disconnectSb = function(){ disconnectSb(); setTimeout(openSettingsSheet, 50); };
+  window.DJ_sendMagicLink = sendMagicLink;
+  window.DJ_pullAndMerge = function(){ pullAndMerge(); setTimeout(openSettingsSheet, 400); };
+
+  /* try to reduce accidental eviction of local data by the browser */
+  if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(function(){}); }
+
   /* ============ nav ============ */
   var NAV_ITEMS = [
     {id:"dashboard", label:"Tableau", ic:"🌌"},
@@ -546,7 +724,7 @@
   overlay.addEventListener('click', function(e){ if(e.target === overlay) closeSheet(); });
 
   /* ============ settings sheet ============ */
-  document.getElementById('settingsBtn').addEventListener('click', function(){
+  function openSettingsSheet(){
     openSheet(
       '<div class="sheet-head"><h3>Réglages</h3><button class="icon-btn" onclick="DJ.closeSheet()">✕</button></div>'+
       '<div class="field"><label>Apparence</label>'+
@@ -556,6 +734,7 @@
           '<option value="dark">Sombre</option>'+
         '</select>'+
       '</div>'+
+      '<div class="field"><label>Synchronisation cloud (Supabase)</label>'+renderSyncSection()+'</div>'+
       '<div class="field"><label>Catégories personnalisées</label>'+
         '<div style="display:flex;gap:8px;margin-bottom:10px">'+
           '<input type="text" id="newCatName" placeholder="Nom (ex: Sport)" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg-elevated);color:var(--ink)">'+
@@ -576,7 +755,39 @@
     });
     document.getElementById('importFile').addEventListener('change', handleImport);
     renderCatManageList();
-  });
+  }
+  document.getElementById('settingsBtn').addEventListener('click', openSettingsSheet);
+  window.DJ_openSettings = openSettingsSheet;
+  function renderSyncSection(){
+    var cfg = sbConfig();
+    if(sbSession){
+      return '<div class="sync-status"><span class="dot on"></span>Connecté en tant que '+escapeHtml(sbSession.user.email)+'</div>'+
+        '<div class="helptext">Dernière synchro : '+(sbLastSync?fmtDate(sbLastSync):'à l\'instant')+'. Tes rêves sont sauvegardés dans le cloud et suivent ton compte, même après un effacement du navigateur.</div>'+
+        '<button class="secondary-btn" onclick="DJ_pullAndMerge()">🔄 Resynchroniser maintenant</button>'+
+        '<button class="secondary-btn" style="color:var(--rose)" onclick="DJ_disconnectSb()">Se déconnecter</button>';
+    }
+    if(cfg && cfg.url && cfg.key){
+      return '<div class="sync-status"><span class="dot off"></span>Projet configuré, pas encore connecté</div>'+
+        '<div class="field" style="margin-bottom:8px"><input type="text" id="sbEmail" placeholder="ton@email.com" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg-elevated);color:var(--ink)"></div>'+
+        '<button class="secondary-btn" onclick="DJ_sendMagicLink(document.getElementById(\'sbEmail\').value.trim())">✉️ Recevoir un lien de connexion</button>'+
+        '<button class="secondary-btn" style="color:var(--rose)" onclick="DJ_disconnectSb()">Retirer la configuration</button>';
+    }
+    return '<div class="helptext">Sans configuration, tes rêves restent uniquement dans ce navigateur (LocalStorage) — un effacement des données du site les supprime. Connecte un projet Supabase gratuit pour les sauvegarder dans le cloud et les retrouver sur tous tes appareils.</div>'+
+      '<details class="howto"><summary>Comment créer un projet Supabase gratuit (2 min)</summary>'+
+        '<ol>'+
+          '<li>Va sur <b>supabase.com</b> → crée un compte gratuit → "New project"</li>'+
+          '<li>Une fois créé, ouvre <b>SQL Editor → New query</b>, clique sur le bouton ci-dessous pour copier le script, colle-le (Ctrl/Cmd+V) tel quel dans l\'éditeur puis clique sur <b>Run</b> :'+
+          '<button class="secondary-btn" style="margin:8px 0" onclick="DJ_copySql()">📋 Copier le script SQL</button>'+
+          '<pre id="sqlPreview" style="user-select:all">'+escapeHtml(SQL_SETUP_SCRIPT)+'</pre>'+
+          '<div class="helptext">Utilise de préférence le bouton "Copier" ci-dessus plutôt qu\'une sélection manuelle : une sélection partielle du texte de la page (bouton, pourcentage, etc.) provoque une erreur de syntaxe SQL à l\'exécution.</div>'+
+          '</li>'+
+          '<li>Va dans <b>Project Settings → API</b> : copie <b>Project URL</b> et la clé <b>anon public</b>, colle-les ci-dessous</li>'+
+        '</ol>'+
+      '</details>'+
+      '<div class="field" style="margin-bottom:8px"><input type="text" id="sbUrl" placeholder="Project URL (https://xxxx.supabase.co)" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg-elevated);color:var(--ink)">'+
+      '<input type="text" id="sbKey" placeholder="Clé anon public" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg-elevated);color:var(--ink)"></div>'+
+      '<button class="secondary-btn" onclick="DJ_saveSbConfig(document.getElementById(\'sbUrl\').value.trim(), document.getElementById(\'sbKey\').value.trim())">Enregistrer la configuration</button>';
+  }
   function renderCatManageList(){
     var el = document.getElementById('catManageList');
     if(!el) return;
@@ -609,6 +820,7 @@
     a.href = URL.createObjectURL(blob);
     a.download = "carnet-de-reves-"+new Date().toISOString().slice(0,10)+".json";
     document.body.appendChild(a); a.click(); a.remove();
+    safeSet(LS_LAST_EXPORT, todayISO());
     toast("Export terminé");
   }
   function handleImport(e){
@@ -640,8 +852,8 @@
     var d = state.dreams.find(function(x){return x.id===id;});
     if(!d) return;
     if(d.status === 'done'){
-      d.status = 'todo'; d.completedDate = null;
-      saveDreams(); render();
+      d.status = 'todo'; d.completedDate = null; d.updatedAt = todayISO();
+      saveDreams(); pushDream(d); render();
       return;
     }
     openSheet(
@@ -656,8 +868,10 @@
     if(!d) return;
     d.status = 'done';
     d.completedDate = todayISO();
+    d.updatedAt = todayISO();
     d.note = document.getElementById('noteInput').value.trim();
     saveDreams();
+    pushDream(d);
     closeSheet();
     render();
     burstConfetti();
@@ -673,7 +887,7 @@
   }
   function reallyDelete(id){
     state.dreams = state.dreams.filter(function(d){return d.id!==id;});
-    saveDreams(); closeSheet(); render(); toast("Rêve supprimé");
+    saveDreams(); deleteRemoteDream(id); closeSheet(); render(); toast("Rêve supprimé");
   }
   function editDream(id){
     state.editingId = id;
@@ -733,6 +947,12 @@
       .sort(function(a,b){return new Date(b.completedDate)-new Date(a.completedDate);}).slice(0,5);
 
     return ''+
+    (shouldPromptBackup() ?
+      '<div class="banner"><span class="txt">💾 Ça fait un moment — pense à exporter une sauvegarde de tes rêves.</span>'+
+      '<button class="go" onclick="DJ_backupNow()">Exporter</button>'+
+      '<button class="later" onclick="DJ_dismissBackup()">Plus tard</button></div>' : '')+
+    (sbSession ? '<div class="sync-status"><span class="dot on"></span>Synchronisé avec le cloud ('+escapeHtml(sbSession.user.email)+')</div>' :
+      '<div class="sync-status"><span class="dot off"></span>Stockage local uniquement — <a href="#" onclick="event.preventDefault();DJ_openSettings()" style="color:var(--accent);font-weight:700">activer la sauvegarde cloud</a></div>')+
     '<div class="hero">'+
       '<div class="ring-wrap"><svg width="108" height="108" viewBox="0 0 108 108">'+
         '<circle class="ring-bg" cx="54" cy="54" r="44"/>'+
@@ -912,17 +1132,22 @@
           priority: currentPrio,
           dueDate: document.getElementById('f_due').value || null
         };
+        var touchedDream;
         if(state.editingId){
           var d = state.dreams.find(function(x){return x.id===state.editingId;});
-          Object.assign(d, payload);
+          Object.assign(d, payload, {updatedAt: todayISO()});
+          touchedDream = d;
           toast('Rêve mis à jour ✏️');
         } else {
-          state.dreams.push(Object.assign({
-            id: uid(), status: 'todo', createdAt: todayISO(), completedDate: null, note: ''
-          }, payload));
+          touchedDream = Object.assign({
+            id: uid(), status: 'todo', createdAt: todayISO(), updatedAt: todayISO(), completedDate: null, note: ''
+          }, payload);
+          state.dreams.push(touchedDream);
           toast('Nouveau rêve ajouté ✨');
         }
         saveDreams();
+        pushDream(touchedDream);
+        maybeShowBackupBanner();
         state.editingId = null;
         goTo('list');
       });
@@ -935,9 +1160,9 @@
     // no forced sample data — the empty state invites the user to add their own first dream
   }
 
+  initSupabase();
   render();
 })();
 </script>
 </body>
 </html>
-
