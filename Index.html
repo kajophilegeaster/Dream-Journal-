@@ -382,6 +382,32 @@
     display: block; margin: 14px auto 0; border: none; background: none;
     color: var(--accent); font-weight: 700; font-size: .8rem;
   }
+
+  /* ---------- export PDF (vue d'impression) ---------- */
+  #printView { display: none; }
+  @media print {
+    @page { size: A4; margin: 16mm 14mm; }
+    html, body { background: #fff !important; color: #111 !important; min-height: 0 !important; }
+    body > *:not(#printView) { display: none !important; }
+    #printView { display: block !important; font-family: var(--font-body), Arial, sans-serif; color: #111; font-size: 11pt; line-height: 1.45; }
+    #printView * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pv-head { border-bottom: 2px solid #C6892A; padding-bottom: 10px; margin-bottom: 14px; }
+    .pv-head h1 { font-family: var(--font-display), Georgia, serif; font-size: 24pt; margin: 0 0 2px; color: #1C1B2E; }
+    .pv-head p { margin: 0; color: #555; font-size: 10pt; }
+    .pv-stats { display: flex; gap: 10px; margin: 0 0 16px; }
+    .pv-stat { flex: 1; border: 1px solid #ccc; border-radius: 8px; padding: 8px 10px; text-align: center; }
+    .pv-stat b { display: block; font-size: 16pt; color: #1C1B2E; }
+    .pv-stat span { font-size: 9pt; color: #555; }
+    #printView h2 { font-family: var(--font-display), Georgia, serif; font-size: 14pt; color: #1C1B2E; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; break-after: avoid; }
+    .pv-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dotted #ccc; break-inside: avoid; }
+    .pv-box { font-size: 14pt; line-height: 1.1; color: #C6892A; flex-shrink: 0; width: 20px; }
+    .pv-title { font-weight: 700; font-size: 11.5pt; }
+    .pv-title.done { color: #666; }
+    .pv-meta { font-size: 9pt; color: #555; margin-top: 1px; }
+    .pv-desc { font-size: 10pt; margin-top: 3px; white-space: pre-wrap; }
+    .pv-note { font-size: 9.5pt; margin-top: 4px; padding: 5px 8px; background: #F4E3BE; border-radius: 6px; white-space: pre-wrap; }
+    .pv-foot { margin-top: 22px; font-size: 8.5pt; color: #888; text-align: center; }
+  }
 </style>
 </head>
 <body>
@@ -415,6 +441,8 @@
 <nav class="bottom" id="bottomNav"></nav>
 
 <div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+
+<div id="printView"></div>
 
 <script>
 (function(){
@@ -985,7 +1013,9 @@
         '<div id="catManageList" style="display:flex;flex-wrap:wrap;gap:6px"></div>'+
       '</div>'+
       '<div class="field"><label>Données</label>'+
-        '<button class="secondary-btn" onclick="DJ.exportData()">⬇️ Exporter mes rêves (JSON)</button>'+
+        '<button class="secondary-btn" onclick="DJ.exportPdf()">📄 Exporter mes rêves en PDF</button>'+
+        '<button class="secondary-btn" onclick="DJ.exportData()">💾 Sauvegarde technique (JSON)</button>'+
+        '<div class="helptext">Le PDF est fait pour être lu et partagé. Le JSON sert uniquement à restaurer tes données dans l\'app.</div>'+
         '<button class="secondary-btn" onclick="document.getElementById(\'importFile\').click()">⬆️ Importer un fichier JSON</button>'+
         '<input type="file" id="importFile" accept="application/json" style="display:none">'+
       '</div>'
@@ -1032,6 +1062,54 @@
   function removeCategory(id){
     state.categories = state.categories.filter(function(c){return c.id!==id;});
     saveCats(); renderCatManageList(); render();
+  }
+  /* ---- export PDF : on construit une vue propre puis on ouvre l'impression du navigateur
+     (« Enregistrer au format PDF »), ce qui fonctionne sur mobile comme sur ordinateur. ---- */
+  function pvItem(d){
+    var c = catById(d.category), done = d.status === 'done';
+    var prio = d.priority ? 'Priorité ' + d.priority : '';
+    var meta = [c.em + ' ' + c.name];
+    if(prio) meta.push(prio);
+    if(d.dueDate) meta.push('Prévu le ' + fmtDate(d.dueDate));
+    if(done && d.completedDate) meta.push('Réalisé le ' + fmtDate(d.completedDate));
+    return '<div class="pv-item"><div class="pv-box">' + (done ? '☑' : '☐') + '</div><div>' +
+      '<div class="pv-title' + (done ? ' done' : '') + '">' + escapeHtml(d.title) + '</div>' +
+      '<div class="pv-meta">' + meta.map(escapeHtml).join(' · ') + '</div>' +
+      (d.description ? '<div class="pv-desc">' + escapeHtml(d.description) + '</div>' : '') +
+      (done && d.note ? '<div class="pv-note"><b>Souvenir :</b> ' + escapeHtml(d.note) + '</div>' : '') +
+      '</div></div>';
+  }
+  function buildPrintHtml(){
+    var order = {haute:0, moyenne:1, basse:2};
+    var todo = state.dreams.filter(function(d){return d.status !== 'done';}).sort(function(a,b){
+      var p = (order[a.priority]!==undefined?order[a.priority]:1) - (order[b.priority]!==undefined?order[b.priority]:1);
+      return p || (new Date(a.dueDate||'2999') - new Date(b.dueDate||'2999'));
+    });
+    var done = state.dreams.filter(function(d){return d.status === 'done';}).sort(function(a,b){
+      return new Date(b.completedDate||0) - new Date(a.completedDate||0);
+    });
+    var total = state.dreams.length;
+    var email = sbSession && sbSession.user ? sbSession.user.email : '';
+    return '<div class="pv-head"><h1>☾ Carnet de Rêves</h1><p>Ce que je veux vivre un jour — exporté le ' + fmtDate(todayISO()) + (email ? ' · ' + escapeHtml(email) : '') + '</p></div>' +
+      '<div class="pv-stats">' +
+        '<div class="pv-stat"><b>' + total + '</b><span>Total</span></div>' +
+        '<div class="pv-stat"><b>' + done.length + '</b><span>Réalisés</span></div>' +
+        '<div class="pv-stat"><b>' + todo.length + '</b><span>À réaliser</span></div>' +
+        '<div class="pv-stat"><b>' + progressPct() + '%</b><span>Accompli</span></div>' +
+      '</div>' +
+      (todo.length ? '<h2>À réaliser (' + todo.length + ')</h2>' + todo.map(pvItem).join('') : '') +
+      (done.length ? '<h2>Réalisés (' + done.length + ')</h2>' + done.map(pvItem).join('') : '') +
+      '<div class="pv-foot">Carnet de Rêves</div>';
+  }
+  function exportPdf(){
+    if(!state.dreams.length){ toast("Aucun rêve à exporter pour l'instant"); return; }
+    document.getElementById('printView').innerHTML = buildPrintHtml();
+    closeSheet();
+    var prevTitle = document.title;
+    document.title = 'Carnet de Rêves ' + new Date().toISOString().slice(0,10); // nom de fichier proposé
+    function restore(){ document.title = prevTitle; window.removeEventListener('afterprint', restore); }
+    window.addEventListener('afterprint', restore);
+    setTimeout(function(){ window.print(); }, 300);
   }
   function exportData(){
     var payload = {dreams: state.dreams, categories: state.categories, exportedAt: todayISO()};
@@ -1137,7 +1215,7 @@
   window.DJ = {
     closeSheet: closeSheet, addCategory: addCategory, removeCategory: removeCategory,
     exportData: exportData, confirmDone: confirmDone, reallyDelete: reallyDelete,
-    editDream: editDream, deleteDream: deleteDream
+    editDream: editDream, deleteDream: deleteDream, exportPdf: exportPdf
   };
 
   /* ============ views ============ */
